@@ -10,22 +10,21 @@ trait Edge[V] {
 
 case class SimpleEdge[V](from: V, to: V) extends Edge[V]
 
-class DigraphInvalidHasCycles(message: String) extends RuntimeException(message)
+class DigraphHasCyclesException
+  extends RuntimeException(
+    "Digraph cannot be sorted topologically: Cycles detected, no nodes exist without incoming edges"
+  )
 
 case class Digraph[V](edges: Seq[Edge[V]])(implicit ord: Ordering[V]) {
 
-  val adjacencyList: Map[V, List[V]] = edges
+  lazy val adjacencyList: Map[V, List[V]] = edges
     .groupBy(_.from)
     .map {
       case (fromVertex, toEdges) => fromVertex -> toEdges.toList.map(_.to).sorted
     }
 
-  val nodesWithoutIncomingEdges: Set[V] = adjacencyList.keySet
+  lazy val nodesWithoutIncomingEdges: Set[V] = adjacencyList.keySet
     .diff(adjacencyList.values.flatten.toSet)
-
-  if (nodesWithoutIncomingEdges.isEmpty) {
-    throw new DigraphInvalidHasCycles("Digraph Invalid: Cycles detected, no nodes exist without incoming edges")
-  }
 
   def depthFirstSearchPreOrder(from: Seq[V], visitor: V => Unit): Unit = {
     val stack = mutable.Stack.empty[V]
@@ -54,6 +53,10 @@ case class Digraph[V](edges: Seq[Edge[V]])(implicit ord: Ordering[V]) {
   }
 
   def topologicalSort(): List[V] = {
+    if (nodesWithoutIncomingEdges.isEmpty) {
+      throw new DigraphHasCyclesException()
+    }
+
     val result = mutable.ListBuffer.empty[V]
 
     depthFirstSearchPostOrder(nodesWithoutIncomingEdges.toList, v => {

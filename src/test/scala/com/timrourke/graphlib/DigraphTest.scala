@@ -109,16 +109,14 @@ class DigraphTest extends AnyFunSpec with Matchers {
       )
     }
 
-    it("should detect cycles") {
+    it("should detect cycles when attempting to topologically sort") {
       val edgesWithCycles = List(
         SimpleEdge("A", "B"),
         SimpleEdge("B", "C"),
         SimpleEdge("C", "A"),
       )
 
-      val exception = intercept[DigraphInvalidHasCycles](Digraph(edgesWithCycles))
-
-      exception.getMessage shouldBe "Digraph Invalid: Cycles detected, no nodes exist without incoming edges"
+      intercept[DigraphHasCyclesException](Digraph(edgesWithCycles).topologicalSort())
     }
   }
 }
