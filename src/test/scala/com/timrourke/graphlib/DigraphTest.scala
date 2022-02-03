@@ -118,5 +118,33 @@ class DigraphTest extends AnyFunSpec with Matchers {
 
       intercept[DigraphHasCyclesException](Digraph(edgesWithCycles).topologicalSort())
     }
+
+    it("should compute weakly connected components when only one exists") {
+      val actual = graph.weaklyConnectedComponents()
+
+      actual.map(_.edges.toSet) shouldBe List(edges.toSet)
+    }
+
+    it("should detect multiple weakly connected components") {
+      val edges = List(
+        SimpleEdge("A", "B"),
+        SimpleEdge("A", "C"),
+        SimpleEdge("D", "E"),
+      )
+
+      val graph = Digraph(edges)
+
+      val actual = graph.weaklyConnectedComponents()
+
+      actual.map(_.edges.toSet).toSet shouldBe Set(
+        Set(
+          SimpleEdge("A", "B"),
+          SimpleEdge("A", "C"),
+        ),
+        Set(
+          SimpleEdge("D", "E"),
+        )
+      )
+    }
   }
 }
