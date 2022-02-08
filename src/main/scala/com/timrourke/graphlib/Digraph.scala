@@ -1,5 +1,6 @@
 package com.timrourke.graphlib
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 trait Edge[V] {
@@ -20,8 +21,8 @@ trait Graph[V] {
 
   def adjacencyList: Map[V, List[V]]
 
-  def depthFirstSearchPreOrder(from: Seq[V], visitor: V => Unit): Unit = {
-    val stack = mutable.Stack.empty[V]
+  def breadthFirstSearchPreOrder(from: Seq[V], visitor: V => Unit): Unit = {
+    val queue = mutable.Queue.empty[V]
     val visited = mutable.Set.empty[V]
 
     def visit(from: V): Unit = {
@@ -30,20 +31,45 @@ trait Graph[V] {
       }
 
       visitor(from)
-
-      //noinspection DuplicatedCode
       visited.add(from)
+      queue.enqueue(from)
 
-      adjacencyList.get(from).foreach(vertices => {
-        vertices.foreach(stack.push)
-      })
+      while (queue.nonEmpty) {
+        val next = queue.dequeue()
 
-      while (stack.nonEmpty) {
-        visit(stack.pop())
+        adjacencyList.get(next).foreach(vertices => {
+          vertices.foreach(vertex => {
+            if (!visited.contains(vertex)) {
+              visitor(vertex)
+              visited.add(vertex)
+              queue.enqueue(vertex)
+            }
+          })
+        })
       }
     }
 
     from.foreach(visit)
+  }
+
+  def depthFirstSearchPreOrder(from: Seq[V], visitor: V => Unit): Unit = {
+    @tailrec
+    def visit(parents: List[V], visited: Set[V]): Unit = {
+      parents match {
+        case ::(head, rest) =>
+          if (visited.contains(head)) {
+            visit(rest, visited)
+          } else {
+            visitor(head)
+            val unvisited = adjacencyList.getOrElse(head, List.empty)
+            visit(unvisited ++ rest, visited + head)
+          }
+
+        case Nil => ()
+      }
+    }
+
+    visit(from.toList, Set.empty[V])
   }
 
   def depthFirstSearchPostOrder(from: Seq[V], visitor: V => Unit): Unit = {
@@ -81,7 +107,7 @@ case class UndirectedGraph[V](edges: Seq[Edge[V]])(implicit ord: Ordering[V])
     val toNeighbors = edge.from :: acc.getOrElse(edge.to, List.empty[V])
 
     acc + (edge.from -> fromNeighbors) + (edge.to -> toNeighbors)
-  }).map { case k -> v => k -> v.sorted }
+  }).map { case k -> v => k -> v.sorted(ord) }
 
 }
 
@@ -92,7 +118,7 @@ case class Digraph[V](edges: Seq[Edge[V]])(implicit ord: Ordering[V])
     val fromNeighbors = edge.to :: acc.getOrElse(edge.from, List.empty[V])
 
     acc + (edge.from -> fromNeighbors)
-  }).map { case k -> v => k -> v.sorted }
+  }).map { case k -> v => k -> v.sorted(ord) }
 
   lazy val nodesWithoutIncomingEdges: Set[V] = adjacencyList.keySet
     .diff(adjacencyList.values.flatten.toSet)
@@ -113,22 +139,22 @@ case class Digraph[V](edges: Seq[Edge[V]])(implicit ord: Ordering[V])
 
   def weaklyConnectedComponents(): List[Digraph[V]] = {
     val undirectedGraph = UndirectedGraph(edges)
-    val visited = mutable.Set.empty[Edge[V]]
+    val visited = mutable.Set.empty[V]
 
     undirectedGraph
-      .edges
-      .foldLeft(List.empty[Digraph[V]]){ case (acc, edge) =>
-        if (visited.contains(edge)) {
-          println("dupe detected")
+      .adjacencyList
+      .foldLeft(List.empty[Digraph[V]]) { case (acc, node -> adjacent) =>
+        if (visited.contains(node)) {
           acc
         } else {
           val buf = mutable.ListBuffer.empty[Edge[V]]
 
-          undirectedGraph.depthFirstSearchPreOrder(List(edge.from, edge.to), from => {
+          undirectedGraph.depthFirstSearchPreOrder(node :: adjacent, from => {
+            visited.add(from)
             adjacencyList.get(from).foreach(toNeighbors => {
               toNeighbors.foreach(to => {
                 val edge = SimpleEdge(from, to)
-                visited.add(edge)
+                visited.add(to)
                 buf.addOne(edge)
               })
             })

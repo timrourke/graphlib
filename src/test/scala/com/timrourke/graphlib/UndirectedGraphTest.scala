@@ -4,7 +4,6 @@ import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 class UndirectedGraphTest extends AnyFunSpec with Matchers {
 
@@ -40,7 +39,7 @@ class UndirectedGraphTest extends AnyFunSpec with Matchers {
 
     graph.depthFirstSearchPreOrder(List("A"), v => buf.addOne(v))
 
-    buf.result() shouldBe List("A", "C", "B")
+    buf.result() shouldBe List("A", "B", "C")
   }
 
   it("should perform post-order depth-first search") {
